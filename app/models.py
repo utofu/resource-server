@@ -33,7 +33,7 @@ class ScopesMixin(object):
 
 class Tokens(Base, ScopesMixin):
     __tablename__ = 'tokens'
-    access_token = Column(String(256), primary_key=True)
+    access_token = Column(String(256), primary_key=True, autoincrement=False)
     access_token_expire_date = Column(DateTime, nullable=False)
     refresh_token = Column(String(256), nullable=True)
     refresh_token_expire_date = Column(DateTime, nullable=False)
@@ -49,7 +49,7 @@ class Tokens(Base, ScopesMixin):
 
 class GrantCodes(Base, ScopesMixin):
     __tablename__ = 'grant_codes'
-    code = Column(String(256), primary_key=True)
+    code = Column(String(256), primary_key=True, autoincrement=False)
     expire_date = Column(DateTime, nullable=False)
     is_lapsed = Column(Boolean, default=False, nullable=False)
     _scopes = Column(Text, nullable=False)
@@ -68,7 +68,7 @@ class GrantCodes(Base, ScopesMixin):
 
 class Users(Base, ScopesMixin):
     __tablename__ = 'users'
-    id = Column(String(128), primary_key=True, unique=True)
+    id = Column(String(128), primary_key=True, autoincrement=False)
     password = Column(String(128), nullable=False)
     _scopes = Column(String(128), nullable=False)
     is_restricted = Column(Boolean, nullable=False, default=False)
@@ -149,7 +149,7 @@ class Images(Base):
 
 class Clients(Base):
     __tablename__ = 'clients'
-    id = Column(String(128), primary_key=True, unique=True)
+    id = Column(String(128), primary_key=True, autoincrement=False)
     secret = Column(String(128), nullable=False)
     name = Column(String(128), nullable=False)
     type = Column(String(128), nullable=False)
