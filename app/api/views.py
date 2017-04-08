@@ -15,11 +15,7 @@ def ops_users():
     elif request.method == 'POST':
         data = json.loads(request.data) 
         user_id, user_password = data['user_id'], data['user_password']
-        try:
-            is_restricted = data['is_restricted']
-        except KeyError:
-            is_restricted = False
-
+        is_restricted = data.get('is_restricted', False)
         if is_restricted:
             user = Users.new_user(user_id, user_password)
         else:
