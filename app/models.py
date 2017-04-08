@@ -1,6 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, scoped_session
 from sqlalchemy import Column, DateTime, Index, Integer, String, Text, text, Boolean, ForeignKey
+from datetime import datetime
 try: 
     from . import db
 except ValueError:
@@ -40,6 +41,10 @@ class Tokens(Base, ScopesMixin):
     user_id = Column(String(128), ForeignKey('users.id',ondelete='CASCADE'), nullable=False)
     client_id = Column(String(128), ForeignKey('clients.id', ondelete='CASCADE'), nullable=False)
     grant_code = Column(String(256), ForeignKey('grant_codes.code', ondelete='CASCADE'))
+
+    @classmethod
+    def fetch_by_access_token(cls, access_token):
+        return cls.query.filter_by(access_token=access_token).filter(cls.access_token_expire_date > datetime.now()).first()
 
 
 class GrantCodes(Base, ScopesMixin):
@@ -120,7 +125,7 @@ class Users(Base, ScopesMixin):
 
 class Images(Base):
     __tablename__ = 'images'
-    id = Column(String(128), primary_key=True, unique=True)
+    id = Column(String(128), primary_key=True)
     data = Column(Text, nullable=False)
     user_id = Column(String(128), ForeignKey('users.id',ondelete='CASCADE'), nullable=False)
 
@@ -128,6 +133,17 @@ class Images(Base):
     def new(cls, user_id, data):
         # type: (str, str) -> Images
         return cls(user_id=user_id, data=data)
+
+    @classmethod
+    def fetch(cls, id):
+        return cls.query.filter_by(id=id).first()
+
+    def to_dict(self):
+        return{
+            'id': self.id,
+            'user_id': self.user.id,
+            'data': self.data
+                }
 
 
 
