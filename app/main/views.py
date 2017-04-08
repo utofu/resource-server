@@ -1,4 +1,5 @@
 from . import main
+from ..models import *
 
 
 @main.route('/')
