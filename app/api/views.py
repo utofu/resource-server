@@ -7,7 +7,7 @@ from ..helpers import secure_jsonify as jsonify
 import simplejson as json
 
 
-def auth(scope):
+def auth(scopes):
     # type: (Union[List(str), str]) -> Union[User, None]
     # TODO: 場合によってエラーを出し分ける
     if isinstance(scopes, basestring):
@@ -45,7 +45,7 @@ def ops_users():
 
         data = json.loads(request.data) 
         user_id, user_password = data['user_id'], data['user_password']
-        is_restricted = data.get('is_restricted', False)
+        is_restricted = data.get('is_restricted', False) # pylint: disable=no-member
         if is_restricted:
             user = Users.new_user(user_id, user_password)
         else:
@@ -70,8 +70,8 @@ def ops_images():
             return jsonify({'error': 'insufficient permission'})
 
         data = json.loads(request.data) 
-        data = json['data']
-        images = user.create_image(data)
+        data = data['data']
+        image = user.create_image(data)
         db.session.add(image)
         db.session.commit()
         return jsonify({'image': image.to_dict()})
@@ -97,7 +97,7 @@ def ops_image_by_id(id):
         if not image:
             return jsonify({'error': 'not found image'})
 
-        if not images.user_id == user.id:
+        if not image.user_id == user.id:
             return jsonify({'error': 'you are NOT images owner'})
 
         db.session.delete(image) 
