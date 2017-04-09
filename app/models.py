@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, scoped_session
 from sqlalchemy import Column, DateTime, Index, Integer, String, Text, text, Boolean, ForeignKey
-from datetime import datetime
+from datetime import datetime, timedelta
 try: 
     from . import db
 except ValueError:
@@ -44,8 +44,33 @@ class Tokens(Base, ScopesMixin):
 
     @classmethod
     def fetch_by_access_token(cls, access_token):
-        return cls.query.filter_by(access_token=access_token).filter(cls.access_token_expire_date > datetime.now()).first()
+        return db.session.query(Tokens).filter_by(access_token=access_token).filter(cls.access_token_expire_date > datetime.now()).first()
 
+    @classmethod
+    def new(cls,_scopes,user_id,client_id,grant_code):
+        token = cls()
+
+        from uuid import uuid4
+        from hashlib import sha256
+        token.access_token=sha256(uuid4().hex).hexdigest()
+        token.access_token_expire_date=datetime.now()+timedelta(hours=1)
+        token.refresh_token=sha256(uuid4().hex).hexdigest()
+        token.refresh_token_expire_date=datetime.now()+timedelta(days=3)
+        token._scopes=_scopes
+        token.user_id=user_id
+        token.client_id=client_id
+        token.grant_code=grant_code
+
+        return token
+
+    def to_dict(self):
+        r = {
+            'access_token': self.access_token,
+            'token_type': "bearer",
+            'expires_in': (self.access_token_expire_date - datetime.now()).total_seconds(),
+            'refresh_token':self.refresh_token
+                }
+        return r
 
 class GrantCodes(Base, ScopesMixin):
     __tablename__ = 'grant_codes'
@@ -56,6 +81,7 @@ class GrantCodes(Base, ScopesMixin):
 
     user_id = Column(String(128), ForeignKey('users.id',ondelete='CASCADE'), nullable=False)
     client_id = Column(String(128), ForeignKey('clients.id', ondelete='CASCADE'), nullable=False)
+    redirect_uri = Column(String(256), nullable=True)
 
     tokens = db.relationship(
         'Tokens',
@@ -64,6 +90,25 @@ class GrantCodes(Base, ScopesMixin):
         lazy='dynamic',
         cascade='all, delete-orphan',
         backref="granted_code")
+
+    @classmethod
+    def fetch_by_code(cls, code):
+        return db.session.query(GrantCodes).filter_by(code=code).filter(cls.expire_date > datetime.now()).first()
+    @classmethod
+    def new(cls,scope,user_id,client_id,redirect_uri):
+        grant_code = cls()
+
+        from uuid import uuid4
+        from hashlib import sha256
+        grant_code.code=sha256(uuid4().hex).hexdigest()
+        grant_code.expire_date=datetime.now()+timedelta(minutes=30)
+        grant_code._scopes=scope
+        grant_code.user_id=user_id
+        grant_code.client_id=client_id
+        grant_code.redirect_uri = redirect_uri
+
+        return grant_code
+
 
 
 class Users(Base, ScopesMixin):
@@ -111,11 +156,11 @@ class Users(Base, ScopesMixin):
     @classmethod
     def fetch(cls, user_id, user_password):
         # type: (str, str) -> Union[Users, None]
-        return cls.query.filter_by(id=user_id, user_password=user_password).first()
+        return db.session.query(Users).filter_by(id=user_id, password=user_password).first()
 
     def create_image(self, data):
         # type: (str) -> Images
-        return Images(user_id=self.id, data=data)
+        return Images.new(self.id, data)
 
     def to_dict(self):
         return {
@@ -132,11 +177,12 @@ class Images(Base):
     @classmethod
     def new(cls, user_id, data):
         # type: (str, str) -> Images
-        return cls(user_id=user_id, data=data)
+        from uuid import uuid4
+        return cls(user_id=user_id, data=data, id=uuid4().hex)
 
     @classmethod
     def fetch(cls, id):
-        return cls.query.filter_by(id=id).first()
+        return db.session.query(Images).filter_by(id=id).first()
 
     def to_dict(self):
         return{
@@ -171,6 +217,28 @@ class Clients(Base):
         cascade='all, delete-orphan',
         backref="client")
 
+    @classmethod
+    def new(cls, name, type, redirect_uri):
+        from uuid import uuid4
+        from hashlib import sha256
+        id = sha256(uuid4().hex).hexdigest()
+        secret = sha256(uuid4().hex).hexdigest()
+        return cls(id=id, secret=secret, name=name, type=type, redirect_uri=redirect_uri)
+
+    def to_dict(self, show_secret=False):
+        r = {
+            'id': self.id,
+            'name': self.name,
+            'type': self.type
+                }
+        if show_secret:
+            r.update({'secret': self.secret})
+        return r
+    @classmethod
+    def fetch(cls,id):
+        return db.session.query(Clients).filter_by(id=id).first()
+
+
 
 if __name__ == "__main__":
     Base.metadata.create_all(db.get_engine(app))
@@ -179,4 +247,3 @@ if __name__ == "__main__":
         render_er(Base, '../er.png')
     except ImportError:
         pass
-

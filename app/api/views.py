@@ -23,7 +23,7 @@ def auth(scopes):
     if token is None:
         return None
 
-    users_scopes = set(token.user.scopes)
+    users_scopes = set(token.scopes)
     if not set(scopes).issubset(users_scopes):
         return None
 
@@ -61,7 +61,7 @@ def ops_images():
         if not auth('list_image'):
             return jsonify({'error': 'insufficient permission'})
 
-        images = [i.to_dict() for i in Images.query.all()]
+        images = [i.to_dict() for i in db.session.query(Images).all()]
         return jsonify({'images': images})
 
     elif request.method == 'POST':

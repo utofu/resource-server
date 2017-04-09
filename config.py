@@ -15,7 +15,7 @@ class DevelopConfig(Config):
     DEBUG = True
 
 class MasterConfig(Config):
-    DEBUG = False
+    DEBUG = True
 
 
 config = {
